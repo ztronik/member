@@ -673,22 +673,34 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 function loadData() {
-  const cb = '__mp_' + Date.now();
-  const retryBtn = ' <button onclick="loadData()" style="margin-left:8px;padding:3px 10px;background:#16a34a;color:#fff;border:none;border-radius:6px;font-size:0.75rem;font-weight:700;cursor:pointer;">Coba Lagi</button>';
+  var retryBtn = ' <button onclick="G.loaded=false;loadData()" style="margin-left:8px;padding:3px 10px;background:#16a34a;color:#fff;border:none;border-radius:6px;font-size:0.75rem;font-weight:700;cursor:pointer;">Coba Lagi</button>';
 
-  // Tampilkan indikator loading
   ['al1','al2','al3'].forEach(function(id) {
     document.getElementById(id).innerHTML =
       '<div class="al" style="background:#f0fdf4;color:#166534;border:1px solid #86efac;"><svg style="width:15px;height:15px;fill:none;stroke:#16a34a;stroke-width:2;animation:rot 0.8s linear infinite;flex-shrink:0;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-dasharray="32" stroke-dashoffset="10"/></svg><span>Menghubungkan ke server...</span></div>';
   });
 
-  // Timeout 25 detik (lebih lama untuk mobile)
+  var url = GAS_URL + '?t=' + Date.now();
+
+  // Coba fetch dulu (lebih andal di mobile modern)
+  fetch(url)
+    .then(function(res) { return res.json(); })
+    .then(function(d) { applyData(d); })
+    .catch(function() {
+      // Fallback ke JSONP jika fetch gagal
+      loadDataJsonp(retryBtn);
+    });
+}
+
+function loadDataJsonp(retryBtn) {
+  var retryBtn = retryBtn || ' <button onclick="G.loaded=false;loadData()" style="margin-left:8px;padding:3px 10px;background:#16a34a;color:#fff;border:none;border-radius:6px;font-size:0.75rem;font-weight:700;cursor:pointer;">Coba Lagi</button>';
+  var cb = '__mp_' + Date.now();
   var timer = setTimeout(function() {
     if (!G.loaded) {
       delete window[cb];
       ['al1','al2','al3'].forEach(function(id) {
         document.getElementById(id).innerHTML =
-          '<div class="al al-e"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 15h-2v-2h2zm0-4h-2V7h2z"/></svg><span>Koneksi lambat atau gagal terhubung.' + retryBtn + '</span></div>';
+          '<div class="al al-e"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 15h-2v-2h2zm0-4h-2V7h2z"/></svg><span>Koneksi lambat atau gagal.' + retryBtn + '</span></div>';
       });
     }
   }, 25000);
@@ -696,54 +708,59 @@ function loadData() {
   window[cb] = function(d) {
     clearTimeout(timer);
     delete window[cb];
-    if (!d || d.status !== 'success') {
-      ['al1','al2','al3'].forEach(function(id) {
-        document.getElementById(id).innerHTML =
-          '<div class="al al-e"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 15h-2v-2h2zm0-4h-2V7h2z"/></svg><span>Gagal memuat data.' + retryBtn + '</span></div>';
-      });
-      return;
-    }
-    if (d.customers) G.customers = d.customers.map(function(c) { return {
-      id: c.ID_Pelanggan, name: c.Nama_Pelanggan||'',
-      phone: norm(String(c.No_HP||'')),
-      address: c.Alamat||'',
-      poin: Number(c.Poin_Reward)||0,
-      poinAkumulasi: Number(c.Poin_Akumulasi)||0,
-      totalBelanja: Number(c.Total_Transaksi)||0
-    }; });
-    if (d.pengaturan) {
-      const p = d.pengaturan;
-      if (p.nama_toko) {
-        G.namaToko = p.nama_toko;
-        document.getElementById('shop-name').textContent = p.nama_toko;
-        document.getElementById('foot-name').textContent = p.nama_toko;
-        document.title = 'Member ' + p.nama_toko;
-      }
-      if (p.no_hp_toko)   G.noHp   = String(p.no_hp_toko).trim();
-      if (p.alamat_toko)  G.alamat = String(p.alamat_toko).trim();
-      if (p.tier_bronze !== undefined) G.tiers[0] = {name:'Bronze', min:Number(p.tier_bronze)||0};
-      if (p.tier_silver !== undefined) G.tiers[1] = {name:'Silver', min:Number(p.tier_silver)||500};
-      if (p.tier_gold   !== undefined) G.tiers[2] = {name:'Gold',   min:Number(p.tier_gold)||2000};
-      if (p.reward_list) { try { const r=JSON.parse(p.reward_list); if(Array.isArray(r)) G.rewardList=r; } catch(e){} }
-    }
-    G.loaded = true;
-    ['al1','al2','al3'].forEach(function(id) { document.getElementById(id).innerHTML = ''; });
-    if ((document.getElementById('c1').value||'').trim()) cariCek();
-    if ((document.getElementById('c2').value||'').trim()) cariKartu();
-    if ((document.getElementById('c3').value||'').trim()) cariTukar();
+    applyData(d);
   };
-  const s = document.createElement('script');
+
+  var s = document.createElement('script');
   s.src = GAS_URL + '?callback=' + cb + '&t=' + Date.now();
   s.onerror = function() {
     clearTimeout(timer);
     delete window[cb];
-    G.loaded = false;
     ['al1','al2','al3'].forEach(function(id) {
       document.getElementById(id).innerHTML =
-        '<div class="al al-e"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 15h-2v-2h2zm0-4h-2V7h2z"/></svg><span>Script gagal dimuat (mungkin koneksi diblokir).' + retryBtn + '</span></div>';
+        '<div class="al al-e"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 15h-2v-2h2zm0-4h-2V7h2z"/></svg><span>Gagal terhubung.' + retryBtn + '</span></div>';
     });
   };
   document.head.appendChild(s);
+}
+
+function applyData(d) {
+  if (!d || d.status !== 'success') {
+    var retryBtn = ' <button onclick="G.loaded=false;loadData()" style="margin-left:8px;padding:3px 10px;background:#16a34a;color:#fff;border:none;border-radius:6px;font-size:0.75rem;font-weight:700;cursor:pointer;">Coba Lagi</button>';
+    ['al1','al2','al3'].forEach(function(id) {
+      document.getElementById(id).innerHTML =
+        '<div class="al al-e"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 15h-2v-2h2zm0-4h-2V7h2z"/></svg><span>Gagal memuat data.' + retryBtn + '</span></div>';
+    });
+    return;
+  }
+  if (d.customers) G.customers = d.customers.map(function(c) { return {
+    id: c.ID_Pelanggan, name: c.Nama_Pelanggan||'',
+    phone: norm(String(c.No_HP||'')),
+    address: c.Alamat||'',
+    poin: Number(c.Poin_Reward)||0,
+    poinAkumulasi: Number(c.Poin_Akumulasi)||0,
+    totalBelanja: Number(c.Total_Transaksi)||0
+  }; });
+  if (d.pengaturan) {
+    var p = d.pengaturan;
+    if (p.nama_toko) {
+      G.namaToko = p.nama_toko;
+      document.getElementById('shop-name').textContent = p.nama_toko;
+      document.getElementById('foot-name').textContent = p.nama_toko;
+      document.title = 'Member ' + p.nama_toko;
+    }
+    if (p.no_hp_toko)   G.noHp   = String(p.no_hp_toko).trim();
+    if (p.alamat_toko)  G.alamat = String(p.alamat_toko).trim();
+    if (p.tier_bronze !== undefined) G.tiers[0] = {name:'Bronze', min:Number(p.tier_bronze)||0};
+    if (p.tier_silver !== undefined) G.tiers[1] = {name:'Silver', min:Number(p.tier_silver)||500};
+    if (p.tier_gold   !== undefined) G.tiers[2] = {name:'Gold',   min:Number(p.tier_gold)||2000};
+    if (p.reward_list) { try { var r=JSON.parse(p.reward_list); if(Array.isArray(r)) G.rewardList=r; } catch(e){} }
+  }
+  G.loaded = true;
+  ['al1','al2','al3'].forEach(function(id) { document.getElementById(id).innerHTML = ''; });
+  if ((document.getElementById('c1').value||'').trim()) cariCek();
+  if ((document.getElementById('c2').value||'').trim()) cariKartu();
+  if ((document.getElementById('c3').value||'').trim()) cariTukar();
 }
 
 // ── Helpers ──────────────────────────────────────────────────

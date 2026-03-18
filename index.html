@@ -526,7 +526,7 @@ body::before {
 
   <!-- Footer -->
   <div class="card-footer">
-    &copy; 2025 &nbsp;<strong id="foot-name">Z-TRONIK</strong> &nbsp;&bull;&nbsp; ALL RIGHTS RESERVED.
+    &copy; 2026 &nbsp;<strong id="foot-name">Z-TRONIK</strong> POS &nbsp;&bull;&nbsp; Sistem Kasir Digital.
   </div>
 </div>
 
@@ -1036,10 +1036,22 @@ function drawCard(c, qEl) {
     const qy = Math.round((h - 44 - qs) / 2);
     ctx.fillStyle='#fff'; rr(ctx,qx-10,qy-10,qs+20,qs+20,12); ctx.fill();
     try { ctx.drawImage(qEl,qx,qy,qs,qs); } catch(e){}
-    ctx.fillStyle='rgba(255,255,255,0.55)'; ctx.font='600 12px sans-serif';
-    ctx.textAlign='center';
-    ctx.fillText('Scan untuk Cek Poin', qx+qs/2, qy+qs+26);
-    ctx.textAlign='left';
+
+    // Badge "Scan untuk Cek Poin" — sama seperti badge KARTU MEMBER
+    const scanText = 'Scan untuk Cek Poin';
+    ctx.font = '700 13px sans-serif';
+    const scanW = ctx.measureText(scanText).width + 24;
+    const scanX = qx + (qs + 20 - scanW) / 2 - 10;
+    const scanY = qy + qs + 14;
+    ctx.fillStyle = 'rgba(255,255,255,0.22)';
+    rr(ctx, scanX, scanY, scanW, 26, 5); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1;
+    rr(ctx, scanX, scanY, scanW, 26, 5); ctx.stroke();
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '700 13px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(scanText, qx + qs/2, scanY + 17);
+    ctx.textAlign = 'left';
   }
 
   // Bottom strip

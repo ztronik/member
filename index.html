@@ -5,9 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Member Portal</title>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
@@ -477,7 +476,7 @@ body::before {
     <div id="al1"></div>
     <div class="inp-wrap">
       <svg class="ico" viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-8 9-8-5h16l-8 5z"/></svg>
-      <input class="inp" id="c1" type="text" placeholder="ID Member / No HP..."
+      <input class="inp" id="c1" type="text" placeholder="ID Member / No HP / Nama..."
         onkeydown="if(event.key==='Enter')cariCek()">
     </div>
     <button class="btn btn-green" id="sb1" onclick="toggleScan(1)">
@@ -528,7 +527,7 @@ body::before {
 
   <!-- Footer -->
   <div class="card-footer">
-    &copy; 2026 &nbsp;<strong id="foot-name">Z-TRONIK</strong> POS &nbsp;&bull;&nbsp; Sistem Kasir Digital.
+    &copy; 2026 &nbsp;<strong id="foot-name">Z-TRONIK</strong> &nbsp;&bull;&nbsp; Sistem Kasir Digital.
   </div>
 </div>
 
@@ -660,43 +659,55 @@ let G = {
 let sc = {1:null, 3:null};
 let kartuM = null, tukarM = null;
 
-document.addEventListener('DOMContentLoaded', loadData);
-
+document.addEventListener('DOMContentLoaded', function() {
+  loadData();
+  // Popup close on overlay click
+  ['cek','kartu','tukar'].forEach(function(n) {
+    var el = document.getElementById('popup-'+n);
+    if (el) el.addEventListener('click', function(e) {
+      if (e.target === e.currentTarget) closePopup(n);
+    });
+  });
+});
 function loadData() {
   const cb = '__mp_' + Date.now();
-  // Tampilkan indikator loading di semua panel
-  ['al1','al2','al3'].forEach(id => {
+  const retryBtn = ' <button onclick="loadData()" style="margin-left:8px;padding:3px 10px;background:#16a34a;color:#fff;border:none;border-radius:6px;font-size:0.75rem;font-weight:700;cursor:pointer;">Coba Lagi</button>';
+
+  // Tampilkan indikator loading
+  ['al1','al2','al3'].forEach(function(id) {
     document.getElementById(id).innerHTML =
       '<div class="al" style="background:#f0fdf4;color:#166534;border:1px solid #86efac;"><svg style="width:15px;height:15px;fill:none;stroke:#16a34a;stroke-width:2;animation:rot 0.8s linear infinite;flex-shrink:0;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-dasharray="32" stroke-dashoffset="10"/></svg><span>Menghubungkan ke server...</span></div>';
   });
 
-  setTimeout(() => {
+  // Timeout 25 detik (lebih lama untuk mobile)
+  var timer = setTimeout(function() {
     if (!G.loaded) {
       delete window[cb];
-      ['al1','al2','al3'].forEach(id => {
+      ['al1','al2','al3'].forEach(function(id) {
         document.getElementById(id).innerHTML =
-          '<div class="al al-e"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 15h-2v-2h2zm0-4h-2V7h2z"/></svg><span>Gagal terhubung. Refresh halaman dan coba lagi.</span></div>';
+          '<div class="al al-e"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 15h-2v-2h2zm0-4h-2V7h2z"/></svg><span>Koneksi lambat atau gagal terhubung.' + retryBtn + '</span></div>';
       });
     }
-  }, 15000);
+  }, 25000);
 
   window[cb] = function(d) {
+    clearTimeout(timer);
     delete window[cb];
     if (!d || d.status !== 'success') {
-      ['al1','al2','al3'].forEach(id => {
+      ['al1','al2','al3'].forEach(function(id) {
         document.getElementById(id).innerHTML =
-          '<div class="al al-e"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 15h-2v-2h2zm0-4h-2V7h2z"/></svg><span>Gagal memuat data. Coba refresh.</span></div>';
+          '<div class="al al-e"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 15h-2v-2h2zm0-4h-2V7h2z"/></svg><span>Gagal memuat data.' + retryBtn + '</span></div>';
       });
       return;
     }
-    if (d.customers) G.customers = d.customers.map(c => ({
+    if (d.customers) G.customers = d.customers.map(function(c) { return {
       id: c.ID_Pelanggan, name: c.Nama_Pelanggan||'',
       phone: norm(String(c.No_HP||'')),
       address: c.Alamat||'',
       poin: Number(c.Poin_Reward)||0,
       poinAkumulasi: Number(c.Poin_Akumulasi)||0,
       totalBelanja: Number(c.Total_Transaksi)||0
-    }));
+    }; });
     if (d.pengaturan) {
       const p = d.pengaturan;
       if (p.nama_toko) {
@@ -713,9 +724,7 @@ function loadData() {
       if (p.reward_list) { try { const r=JSON.parse(p.reward_list); if(Array.isArray(r)) G.rewardList=r; } catch(e){} }
     }
     G.loaded = true;
-    // Hapus pesan loading
-    ['al1','al2','al3'].forEach(id => { document.getElementById(id).innerHTML = ''; });
-    // Jika ada input yang sudah diketik sebelum data selesai, jalankan ulang otomatis
+    ['al1','al2','al3'].forEach(function(id) { document.getElementById(id).innerHTML = ''; });
     if ((document.getElementById('c1').value||'').trim()) cariCek();
     if ((document.getElementById('c2').value||'').trim()) cariKartu();
     if ((document.getElementById('c3').value||'').trim()) cariTukar();
@@ -783,27 +792,40 @@ function toggleScan(p) {
     sb.classList.remove('btn-soft'); sb.classList.add('btn-green');
     return;
   }
-  sa.style.display='flex';
-  sb.innerHTML=xSvg()+'Tutup Scanner';
-  sb.classList.remove('btn-green'); sb.classList.add('btn-soft');
-  const scanner=new Html5Qrcode('r'+p);
-  scanner.start({facingMode:'environment'},{fps:10,qrbox:{width:200,height:200}},
-    decoded => {
-      scanner.stop().catch(()=>{}); sc[p]=null;
-      sa.style.display='none';
+  // Lazy-load html5-qrcode hanya saat pertama kali dibutuhkan
+  function startScanner() {
+    sa.style.display='flex';
+    sb.innerHTML=xSvg()+'Tutup Scanner';
+    sb.classList.remove('btn-green'); sb.classList.add('btn-soft');
+    const scanner=new Html5Qrcode('r'+p);
+    scanner.start({facingMode:'environment'},{fps:10,qrbox:{width:200,height:200}},
+      function(decoded) {
+        scanner.stop().catch(()=>{}); sc[p]=null;
+        sa.style.display='none';
+        sb.innerHTML=qrSvg()+'Scan QR Kartu';
+        sb.classList.remove('btn-soft'); sb.classList.add('btn-green');
+        const v=decoded.trim();
+        if (p===1) { document.getElementById('c1').value=v; cariCek(); }
+        else       { document.getElementById('c3').value=v; cariTukar(); }
+      }, ()=>{}
+    ).catch(function() {
+      al('al'+(p===1?1:3),'Kamera tidak bisa diakses.','e');
+      sa.style.display='none'; sc[p]=null;
       sb.innerHTML=qrSvg()+'Scan QR Kartu';
       sb.classList.remove('btn-soft'); sb.classList.add('btn-green');
-      const v=decoded.trim();
-      if (p===1) { document.getElementById('c1').value=v; cariCek(); }
-      else       { document.getElementById('c3').value=v; cariTukar(); }
-    }, ()=>{}
-  ).catch(() => {
-    al('al'+(p===1?1:3),'Kamera tidak bisa diakses.','e');
-    sa.style.display='none'; sc[p]=null;
-    sb.innerHTML=qrSvg()+'Scan QR Kartu';
-    sb.classList.remove('btn-soft'); sb.classList.add('btn-green');
-  });
-  sc[p]=scanner;
+    });
+    sc[p]=scanner;
+  }
+  if (typeof Html5Qrcode === 'undefined') {
+    sb.innerHTML='<svg style="animation:rot 0.7s linear infinite" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg> Memuat...';
+    const s=document.createElement('script');
+    s.src='https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
+    s.onload=startScanner;
+    s.onerror=function(){ sb.innerHTML=qrSvg()+'Scan QR Kartu'; sb.classList.remove('btn-soft'); sb.classList.add('btn-green'); al('al'+(p===1?1:3),'Gagal memuat library scanner.','e'); };
+    document.head.appendChild(s);
+  } else {
+    startScanner();
+  }
 }
 function qrSvg(){return '<svg viewBox="0 0 24 24"><path d="M2 4h4V2H2v2zm0 7h2V4H2v7zm0 9h4v-2H2v2zm4 0h2v-4H6v4zm0-16v4h2V4H6zm2 12h4v-2H8v2zm4-12h4V2h-4v2zm4 0v4h2V4h-2zm0 7h2v-7h-2v7zm-4 5h2v-3h-2v3zm-4-5h2V7H8v4zm4 0h4V7h-4v4zm4 5h4v-2h-4v2zm2 0v4h-2v-4h2zm-6 4h4v-2h-4v2z"/></svg>';}
 function xSvg(){return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';}
@@ -819,13 +841,6 @@ function closePopup(name) {
   if (name === 'tukar') { tukarM=null; document.getElementById('dp').value=''; document.getElementById('ts2-konfirm').innerHTML=''; document.getElementById('ts2-rwd').innerHTML=''; document.getElementById('ts2-info').innerHTML=''; }
 }
 // Close on overlay click
-document.addEventListener('DOMContentLoaded', () => {
-  ['cek','kartu','tukar'].forEach(n => {
-    document.getElementById('popup-'+n).addEventListener('click', e => {
-      if (e.target === e.currentTarget) closePopup(n);
-    });
-  });
-});
 
 // ── Panel 1: Cek Poin ─────────────────────────────────────────
 function cariCek() {
@@ -1274,10 +1289,27 @@ function konfirmHTML(nama, rows, pesan) {
 
 // ── GAS fetch helper ──────────────────────────────────────
 function gasPost(payload) {
-  return fetch(GAS_URL, {
-    method: 'POST',
-    body: JSON.stringify(payload)
-  }).then(function(r){ return r.json(); });
+  return new Promise(function(resolve, reject) {
+    var cb = '__gp_' + Date.now() + '_' + Math.floor(Math.random()*9999);
+    var timer = setTimeout(function() {
+      delete window[cb];
+      reject(new Error('timeout'));
+    }, 15000);
+    window[cb] = function(res) {
+      clearTimeout(timer);
+      delete window[cb];
+      resolve(res);
+    };
+    // Encode payload sebagai URL params — kirim via JSONP GET (no CORS)
+    var params = 'callback=' + encodeURIComponent(cb);
+    Object.keys(payload).forEach(function(k) {
+      params += '&' + encodeURIComponent(k) + '=' + encodeURIComponent(payload[k] !== undefined ? payload[k] : '');
+    });
+    var s = document.createElement('script');
+    s.src = GAS_URL + '?' + params;
+    s.onerror = function() { clearTimeout(timer); delete window[cb]; reject(new Error('network error')); };
+    document.head.appendChild(s);
+  });
 }
 
 

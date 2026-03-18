@@ -526,7 +526,7 @@ body::before {
 
   <!-- Footer -->
   <div class="card-footer">
-    &copy; 2026 &nbsp;<strong id="foot-name">Z-TRONIK</strong> POS &nbsp;&bull;&nbsp; Sistem Kasir Digital.
+    &copy; 2025 &nbsp;<strong id="foot-name">Z-TRONIK</strong> &nbsp;&bull;&nbsp; ALL RIGHTS RESERVED.
   </div>
 </div>
 
@@ -897,28 +897,57 @@ function cariKartu() {
   kartuM = c;
 
   function generateKartu() {
-    // Gunakan Google Charts QR API — lebih andal di mobile, tidak perlu library
-    const qrUrl = 'https://chart.googleapis.com/chart?chs=480x480&cht=qr&chl=' +
-      encodeURIComponent(c.id) + '&chco=052e16&chf=bg,s,ffffff&chld=M|2';
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = function() {
-      document.getElementById('qr-tmp').innerHTML = '';
-      document.getElementById('qr-tmp').appendChild(img);
-      drawCard(c, img);
-      drawCardBack(c);
-      openPopup('kartu');
-    };
-    img.onerror = function() {
-      // Fallback: tampilkan kartu tanpa QR
-      drawCard(c, null);
-      drawCardBack(c);
-      openPopup('kartu');
-    };
-    img.src = qrUrl;
+    const qd = document.getElementById('qr-tmp');
+    qd.innerHTML = '';
+
+    if (typeof QRCode === 'undefined') {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+      s.onload = function() { doGenerate(); };
+      s.onerror = function() {
+        drawCard(c, null); drawCardBack(c); openPopup('kartu');
+      };
+      document.head.appendChild(s);
+    } else {
+      doGenerate();
+    }
+
+    function doGenerate() {
+      try {
+        new QRCode(qd, {
+          text: c.id,
+          width: 300, height: 300,
+          colorDark: '#052e16',
+          colorLight: '#ffffff',
+          correctLevel: QRCode.CorrectLevel.M
+        });
+      } catch(e) {
+        drawCard(c, null); drawCardBack(c); openPopup('kartu');
+        return;
+      }
+
+      // Poll sampai canvas/img benar-benar ada isinya
+      var tries = 0;
+      var poll = setInterval(function() {
+        tries++;
+        var qrCanvas = qd.querySelector('canvas');
+        var qrImg    = qd.querySelector('img');
+        var ready    = false;
+
+        if (qrCanvas && qrCanvas.width > 0) ready = true;
+        if (qrImg && qrImg.complete && qrImg.naturalWidth > 0) ready = true;
+
+        if (ready || tries > 30) {
+          clearInterval(poll);
+          var qrEl = qrCanvas || qrImg || null;
+          drawCard(c, qrEl);
+          drawCardBack(c);
+          openPopup('kartu');
+        }
+      }, 100);
+    }
   }
 
-  // Langsung generate kartu
   generateKartu();
 }
 

@@ -6,7 +6,6 @@
 <title>Member Portal</title>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
@@ -527,7 +526,7 @@ body::before {
 
   <!-- Footer -->
   <div class="card-footer">
-    &copy; 2026 &nbsp;<strong id="foot-name">Z-TRONIK</strong> POS &nbsp;&bull;&nbsp; Sistem Kasir Digital.
+    &copy; 2025 &nbsp;<strong id="foot-name">Z-TRONIK</strong> &nbsp;&bull;&nbsp; ALL RIGHTS RESERVED.
   </div>
 </div>
 
@@ -896,14 +895,28 @@ function cariKartu() {
   const c = findM(val);
   if (!c) { al('al2','Member tidak ditemukan.','e'); return; }
   kartuM = c;
-  const qd = document.getElementById('qr-tmp');
-  qd.innerHTML = '';
-  new QRCode(qd, { text:c.id, width:480, height:480, colorDark:'#052e16', colorLight:'#ffffff', correctLevel:QRCode.CorrectLevel.M });
-  setTimeout(() => {
-    drawCard(c, qd.querySelector('img')||qd.querySelector('canvas'));
-    drawCardBack(c);
-    openPopup('kartu');
-  }, 350);
+
+  function generateKartu() {
+    const qd = document.getElementById('qr-tmp');
+    qd.innerHTML = '';
+    new QRCode(qd, { text:c.id, width:480, height:480, colorDark:'#052e16', colorLight:'#ffffff', correctLevel:QRCode.CorrectLevel.M });
+    setTimeout(function() {
+      drawCard(c, qd.querySelector('img')||qd.querySelector('canvas'));
+      drawCardBack(c);
+      openPopup('kartu');
+    }, 350);
+  }
+
+  // Lazy-load qrcodejs jika belum tersedia
+  if (typeof QRCode === 'undefined') {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+    s.onload = generateKartu;
+    s.onerror = function() { al('al2','Gagal memuat library QR code.','e'); };
+    document.head.appendChild(s);
+  } else {
+    generateKartu();
+  }
 }
 
 function drawCard(c, qEl) {

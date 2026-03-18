@@ -444,7 +444,7 @@ body::before {
 
   <!-- Header -->
   <div class="card-top">
-    <div class="shop-name" id="shop-name">Z-TRONIK</div>
+    <div class="shop-name" id="shop-name">NAMA TOKO</div>
     <div class="shop-sub">Sistem Pengecekan Poin Member</div>
   </div>
 
@@ -527,7 +527,10 @@ body::before {
 
   <!-- Footer -->
   <div class="card-footer">
-    &copy; 2026 &nbsp;<strong id="foot-name">Z-TRONIK</strong> &nbsp;&bull;&nbsp; Sistem Kasir Digital.
+    &copy; 2025 &nbsp;<strong id="foot-name">Z-TRONIK</strong> &nbsp;&bull;&nbsp; ALL RIGHTS RESERVED.
+    <div style="margin-top:6px;">
+      <button onclick="showDebug()" style="font-size:0.6rem;color:#d1d5db;background:none;border:none;cursor:pointer;font-family:inherit;">debug</button>
+    </div>
   </div>
 </div>
 
@@ -731,6 +734,15 @@ function loadData() {
   };
   const s = document.createElement('script');
   s.src = GAS_URL + '?callback=' + cb + '&t=' + Date.now();
+  s.onerror = function() {
+    clearTimeout(timer);
+    delete window[cb];
+    G.loaded = false;
+    ['al1','al2','al3'].forEach(function(id) {
+      document.getElementById(id).innerHTML =
+        '<div class="al al-e"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 15h-2v-2h2zm0-4h-2V7h2z"/></svg><span>Script gagal dimuat (mungkin koneksi diblokir).' + retryBtn + '</span></div>';
+    });
+  };
   document.head.appendChild(s);
 }
 
@@ -1312,6 +1324,20 @@ function gasPost(payload) {
   });
 }
 
+
+// ── DEBUG ─────────────────────────────────────────────────
+function showDebug() {
+  var info = [
+    'UA: ' + navigator.userAgent.slice(0,80),
+    'GAS loaded: ' + G.loaded,
+    'Customers: ' + G.customers.length,
+    'GAS URL: ' + GAS_URL.slice(0,60)+'...',
+    'Protocol: ' + location.protocol,
+    'Host: ' + location.hostname,
+    'Online: ' + navigator.onLine
+  ].join('\n');
+  alert(info);
+}
 
 // ── CONFIRM MODAL ─────────────────────────────────────────
 var _confirmCb = null;
